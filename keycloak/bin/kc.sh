@@ -67,7 +67,13 @@ do
       *)
           OPT=$(esceval "$1")
           case "$1" in
-            start-dev) CONFIG_ARGS="$CONFIG_ARGS --profile=dev $1";;
+    start-dev)
+        CONFIG_ARGS="$CONFIG_ARGS --profile=dev $1 \
+        --spi-cors-default-enabled=true \
+        --spi-cors-default-origins=http://localhost:5173 \
+        --spi-cors-default-credentials=true"
+        ;;
+
             -D*) SERVER_OPTS="$SERVER_OPTS ${OPT}";;
             *) case "$1" in
                  --optimized | --help | --help-all | -h) PRE_BUILD=false;;

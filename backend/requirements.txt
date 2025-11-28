@@ -6,3 +6,4 @@ pydantic
 psycopg2-binary
 SQLAlchemy
 python-dotenv
+httpx
