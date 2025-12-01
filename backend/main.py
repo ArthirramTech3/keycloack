@@ -7,7 +7,8 @@ from pydantic import BaseModel, EmailStr
 from typing import Dict, Any, List, Optional
  
 import uvicorn
-from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy import create_engine, Column, String, Integer, inspect
+from sqlalchemy.exc import StatementError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
@@ -58,6 +59,21 @@ class LoginCredentials(BaseModel):
     username: str
     password: str
 
+class RolePermissionData(BaseModel):
+    role: str
+    permission: str
+    enabled: bool
+
+class RolePermissionsUpdate(BaseModel):
+    permissions: Dict[str, Dict[str, bool]]
+
+class LanguageModelCreate(BaseModel):
+    provider: str
+    model_name: str
+    api_key: str
+    api_url: str
+    is_public: bool
+
 # --- Database Configuration ---
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -75,9 +91,50 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
 
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+    id = Column(Integer, primary_key=True, index=True)
+    role_name = Column(String, index=True)
+    permission_name = Column(String, index=True)
+    enabled = Column(String)
+
+class LanguageModel(Base):
+    __tablename__ = "language_models"
+    id = Column(Integer, primary_key=True, index=True)
+    provider = Column(String, index=True)
+    model_name = Column(String, index=True)
+    api_key = Column(String)
+    api_url = Column(String)
+    created_by = Column(String)
+    is_public = Column(String) # "true" or "false"
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup_event():
+    inspector = inspect(engine)
+    if not inspector.has_table("language_models"):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("!!! DATABASE ERROR: The 'language_models' table does not exist.")
+        print("!!! Please delete the `test.db` file and restart the backend.")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        return
+
+    expected_columns = {"id", "provider", "model_name", "api_key", "api_url", "created_by", "is_public"}
+    columns_in_db = {c["name"] for c in inspector.get_columns("language_models")}
+
+    if not expected_columns.issubset(columns_in_db):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("!!! DATABASE SCHEMA MISMATCH in 'language_models' table.")
+        print(f"!!! Expected columns: {expected_columns}")
+        print(f"!!! Columns in DB:    {columns_in_db}")
+        missing = expected_columns - columns_in_db
+        if missing:
+            print(f"!!! Missing columns:  {missing}")
+        print("!!! Please delete the `test.db` file and restart the backend.")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 # --- CORS Middleware ---
 origins = [
@@ -862,38 +919,67 @@ async def get_all_realm_roles(
     current_user: dict = Depends(verify_admin_role)
 ) -> List[Dict[str, Any]]:
     """
-    Gets all available realm roles from Keycloak with details and user count (Admin only).
+    Gets all available realm and client roles from Keycloak with details and user count (Admin only).
     """
     try:
         admin_token = await get_admin_token()
         
-        roles = await fetch_keycloak_data(
+        # 1. Fetch Realm Roles
+        realm_roles = await fetch_keycloak_data(
             f"{KEYCLOAK_SERVER_URL}/admin/realms/{KEYCLOAK_REALM}/roles", admin_token
         )
         
+        # 2. Fetch Clients to get Client Roles
+        clients = await fetch_keycloak_data(
+            f"{KEYCLOAK_SERVER_URL}/admin/realms/{KEYCLOAK_REALM}/clients", admin_token
+        )
+        
+        all_roles = list(realm_roles)
+        
+        # 3. Fetch roles for each client and add to the list
+        async with httpx.AsyncClient() as client:
+            for c in clients:
+                client_id = c['id']
+                client_roles_url = f"{KEYCLOAK_SERVER_URL}/admin/realms/{KEYCLOAK_REALM}/clients/{client_id}/roles"
+                
+                try:
+                    client_roles = await fetch_keycloak_data(client_roles_url, admin_token)
+                    all_roles.extend(client_roles)
+                except HTTPException as e:
+                    # It's possible some clients don't have roles or we can't access them
+                    print(f"Could not fetch roles for client {c.get('clientId')}: {e.detail}")
+
+        # 4. Format all roles
         formatted_roles = []
         async with httpx.AsyncClient() as client:
-            for role in roles:
-                # Fetch the actual number of users who have this role
+            for role in all_roles:
+                role_name_encoded = httpx.URL(role['name']).path.strip('/') # URL encode role name
+                
+                # Fetch user count for the role
+                users_url = f"{KEYCLOAK_SERVER_URL}/admin/realms/{KEYCLOAK_REALM}/roles/{role_name_encoded}/users"
                 user_count_response = await client.get(
-                    f"{KEYCLOAK_SERVER_URL}/admin/realms/{KEYCLOAK_REALM}/roles/{role['name']}/users",
+                    users_url,
                     headers={"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"},
                     timeout=5.0
                 )
                 
                 user_count = 0
                 if user_count_response.status_code == 200:
-                    user_count_data = user_count_response.json()
-                    user_count = len(user_count_data)
+                    user_count = len(user_count_response.json())
                 
+                # Exclude default realm roles if they are not needed
+                if role['name'].startswith('default-roles-'):
+                    continue
+
                 formatted_roles.append({
                     "id": role["id"],
                     "name": role["name"],
                     "description": role.get("description", "No description provided"),
                     "composite": role.get("composite", False),
                     "usersCount": user_count,
-                    "status": True
+                    "status": True 
                 })
+                
         return formatted_roles
         
     except HTTPException:
@@ -1161,6 +1247,167 @@ async def custom_login(credentials: LoginCredentials):
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
         )
+
+
+# --- Permissions Endpoints ---
+
+@app.get("/api/permissions")
+async def get_permissions_list(current_user: dict = Depends(verify_admin_role)):
+    # In a real app, this might come from a config file or another DB table
+    return [
+        'Activate Graphmarts', 'Browse Dashboards', 'Browse Models', 'Create Dashboards',
+        'Create Graphmarts', 'Data On Demand', 'Manage Graphmarts', 'Manage Models',
+        'Show Query Builder', 'View Datasets', 'View Graphmarts', 'View Provenance',
+        'Create Anzo Data Stores', 'Create Data Sources'
+    ]
+
+@app.get("/api/role-permissions")
+async def get_all_role_permissions(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_admin_role)
+):
+    """
+    Gets the complete permission matrix from the database.
+    """
+    all_permissions = db.query(RolePermission).all()
+    
+    # Format the data into the nested dictionary structure the frontend expects
+    permission_matrix = {}
+    for p in all_permissions:
+        if p.role_name not in permission_matrix:
+            permission_matrix[p.role_name] = {}
+        permission_matrix[p.role_name][p.permission_name] = p.enabled == 'true'
+        
+    return permission_matrix
+
+@app.post("/api/role-permissions")
+async def update_role_permissions(
+    update_data: RolePermissionsUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_admin_role)
+):
+    """
+    Receives a complete permission matrix and updates the database.
+    """
+    try:
+        # Clear existing permissions to do a full replace
+        db.query(RolePermission).delete()
+        
+        # Insert the new permissions
+        for role_name, permissions in update_data.permissions.items():
+            for permission_name, enabled in permissions.items():
+                new_permission = RolePermission(
+                    role_name=role_name,
+                    permission_name=permission_name,
+                    enabled=str(enabled).lower()
+                )
+                db.add(new_permission)
+        
+        db.commit()
+        return {"message": "Permissions updated successfully."}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while updating permissions: {str(e)}"
+        )
+
+# --- Token Refresh Endpoint ---
+class RefreshToken(BaseModel):
+    refresh_token: str
+
+@app.post("/token/refresh")
+async def refresh_token(token: RefreshToken):
+    """
+    Refreshes an access token using a refresh token.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": KEYCLOAK_CLIENT_ID,
+                    "refresh_token": token.refresh_token,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=10.0
+            )
+
+            if response.status_code == 200:
+                return response.json()
+            
+            if response.status_code in [400, 401]:
+                error_detail = response.json().get("error_description", "Invalid refresh token")
+                raise HTTPException(status_code=401, detail=error_detail)
+
+            raise HTTPException(
+                status_code=500,
+                detail=f"Keycloak token refresh failed: HTTP {response.status_code} {response.text}"
+            )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error connecting to Keycloak server for token refresh: {str(e)}"
+        )
+
+
+# --- Language Model Endpoints ---
+
+@app.post("/api/models")
+async def create_language_model(
+    model_data: LanguageModelCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_admin_role)
+):
+    """
+    Creates a new language model entry in the database.
+    """
+    try:
+        username = current_user.get("preferred_username")
+        new_model = LanguageModel(
+            provider=model_data.provider,
+            model_name=model_data.model_name,
+            api_key=model_data.api_key,
+            api_url=model_data.api_url,
+            is_public=str(model_data.is_public).lower(),
+            created_by=username
+        )
+        db.add(new_model)
+        db.commit()
+        db.refresh(new_model)
+        return new_model
+    except StatementError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database statement error: {e.orig}"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
+
+@app.get("/api/models")
+async def get_language_models(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_admin_role)
+):
+    """
+    Gets language models. If the user has created models, it returns those.
+    Otherwise, it returns all public models.
+    """
+    username = current_user.get("preferred_username")
+    user_models = db.query(LanguageModel).filter(LanguageModel.created_by == username).all()
+    
+    if user_models:
+        return user_models
+    else:
+        public_models = db.query(LanguageModel).filter(LanguageModel.is_public == "true").all()
+        return public_models
 
 
 if __name__ == "__main__":

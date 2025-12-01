@@ -12,6 +12,12 @@ import AppLayout from './AppLayout'; // <--- NEW Layout Component
 // --- Component Imports (These files must be created in the 'components' folder) ---
 import LanguageModelsDashboard from './components/LanguageModelsDashboard';
 import UserInfoForm from './components/UserInfoForm';
+import PermissionsManager from './components/PermissionsManager';
+import LMOnboardPage from './LMOnboardPage';
+import LMSelectionPage from './LMSelectionPage';
+import LMThresholdsPage from './LMThresholdsPage';
+import ModelDetailsPage from './components/ModelDetailsPage';
+import Calculator from './Calculator'; // <-- ADD THIS IMPORT
 // Note: LMOnboardModal and ModelCard are imported inside LanguageModelsDashboard.jsx
 // --- NEW IMPORT ---
  import { jwtDecode } from 'jwt-decode'; // <-- ADD THIS IMPORT
@@ -23,6 +29,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard'); // Default view after login
   const [loginCompleted, setLoginCompleted] = useState(false);
   const [reauthenticating, setReauthenticating] = useState(false);
+  const [onboardingData, setOnboardingData] = useState(null);
+  const [selectedModel, setSelectedModel] = useState(null);
   const loading = !initialized;
   
   useEffect(() => {
@@ -61,7 +69,6 @@ export default function App() {
                 setReauthenticating(false);
             }
         };
-
         reauthenticate();
     }
 }, [initialized, keycloak.authenticated, reauthenticating]); // Dependency array
@@ -101,7 +108,7 @@ const handleLoginSuccess = async (tokenData) => {
       // We set the min validity to 600 seconds (10 minutes).
       // If the token is valid for 10 more minutes (which it should be), Keycloak will accept the manual setup.
       // This is a common method to bypass minor clock skew and timing issues.
-      const updated = await keycloak.updateToken(600); // <-- Change is here (minValidity = 600)
+      const updated = await keycloak.updateToken(-1); // <-- Change is here (minValidity = -1)
 
       if (!updated) {
           // If it fails here, the token is likely expired or invalid from the server.
@@ -111,7 +118,7 @@ const handleLoginSuccess = async (tokenData) => {
       // 4. Load the user profile and redirect
       await keycloak.loadUserProfile();
       setLoginCompleted(true);
-      setCurrentPage('dashboard'); 
+      setCurrentPage('dashboard'); // <-- Set initial page to the dashboard
       
       console.log("Custom login SUCCESS. Keycloak state is fully established.");
       localStorage.setItem('keycloak_refresh_token', tokenData.refresh_token);
@@ -169,12 +176,48 @@ const handleLoginSuccess = async (tokenData) => {
         <UserManagement /> 
       </ProtectedRoute>
     );
-  } else if (currentPage === "dashboard" || currentPage === "LMOnboard") {
-    // Dashboard and LMOnboard both typically render the dashboard view, 
-    // with LMOnboard potentially triggering a modal (handled internally by the component)
+  } else if (currentPage === "dashboard") {
     content = (
       <ProtectedRoute roles={["admin"]}>
-        <LanguageModelsDashboard />
+        <LanguageModelsDashboard 
+          setCurrentPage={handleNavigate} 
+          onViewModel={model => {
+            setSelectedModel(model);
+            handleNavigate('model-details');
+          }} 
+        />
+      </ProtectedRoute>
+    );
+  } else if (currentPage === "lm-selection") {
+    content = (
+      <ProtectedRoute roles={["admin"]}>
+        <LMSelectionPage onPublicSelect={() => handleNavigate('lm-config')} onPrivateSelect={() => alert('Private hosting not yet supported.')} />
+      </ProtectedRoute>
+    );
+  } else if (currentPage === "lm-config") {
+    content = (
+      <ProtectedRoute roles={["admin"]}>
+        <LMOnboardPage setOnboardingData={setOnboardingData} setCurrentPage={handleNavigate} />
+      </ProtectedRoute>
+    );
+  } else if (currentPage === "lm-thresholds") {
+    content = (
+      <ProtectedRoute roles={["admin"]}>
+        <LMThresholdsPage modelData={onboardingData} setCurrentPage={handleNavigate} />
+      </ProtectedRoute>
+    );
+  } else if (currentPage === "model-details") {
+    content = (
+      <ProtectedRoute roles={["admin"]}>
+        <ModelDetailsPage model={selectedModel} onBack={() => handleNavigate('dashboard')} />
+      </ProtectedRoute>
+    );
+  } else if (currentPage === "calculator") {
+    content = <Calculator />;
+  } else if (currentPage === "permissions") {
+    content = (
+      <ProtectedRoute roles={["admin"]}>
+        <PermissionsManager />
       </ProtectedRoute>
     );
   } else {

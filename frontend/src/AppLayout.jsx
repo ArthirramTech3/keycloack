@@ -45,6 +45,18 @@ const Sidebar = ({ currentPage, onNavigate }) => (
             >
                 User
             </button>
+            <button
+                onClick={() => onNavigate('permissions')}
+                style={getSidebarItemStyle(currentPage === 'permissions')}
+            >
+                Permissions
+            </button>
+            <button
+                onClick={() => onNavigate('calculator')}
+                style={getSidebarItemStyle(currentPage === 'calculator')}
+            >
+                Calculator
+            </button>
         </div>
         {/* <div style={{ padding: '0 20px', marginBottom: '30px' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#9ca3af' }}>USER MANAGEMENT</h3>
@@ -65,8 +77,8 @@ const Sidebar = ({ currentPage, onNavigate }) => (
                 Dashboard
             </button> */}
             <button
-                onClick={() => onNavigate('LMOnboard')} // LM Onboard form/modal
-                style={getSidebarItemStyle(currentPage === 'LMOnboard')}
+                onClick={() => onNavigate('lm-onboard')} // LM Onboard form/modal
+                style={getSidebarItemStyle(currentPage === 'lm-onboard')}
             >
                 LM Onboard
             </button>
@@ -87,7 +99,11 @@ export default function AppLayout({ currentPage, setCurrentPage, children }) {
     const { keycloak } = useKeycloak();
     const username = keycloak.profile?.username || 'User';
 
-    const handleLogout = () => keycloak.logout();
+    const handleLogout = () => {
+        const logoutOptions = { redirectUri: window.location.origin };
+        localStorage.removeItem('keycloak_refresh_token');
+        keycloak.logout(logoutOptions);
+    };
     const handleNavigate = (page) => setCurrentPage(page);
 
     return (

@@ -3,32 +3,32 @@ import { useState } from 'react';
 
 // --- STYLING (Keep all styles) ---
 const styles = {
-  inputStyle: {
-      width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
-      borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box'
-  },
-  labelStyle: {
-      display: 'block', fontSize: '13px', fontWeight: '600',
-      color: '#374151', marginBottom: '6px'
-  },
-  buttonStylePrimary: {
-      padding: '10px 20px', background: '#3b82f6', color: 'white',
-      border: 'none', borderRadius: '4px', cursor: 'pointer',
-      fontWeight: '500', fontSize: '14px'
-  },
-  cardStyle: {
-      border: '1px solid #e5e7eb', borderRadius: '6px', padding: '16px',
-      marginBottom: '15px', cursor: 'pointer', transition: 'all 0.15s',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-  },
-  cardHover: {
-      borderColor: '#3b82f6',
-      boxShadow: '0 4px 6px rgba(59, 130, 246, 0.1)'
-  },
-  headerStyle: {
-      background: '#ef4444', color: 'white', padding: '12px 16px', margin: '0',
-      borderRadius: '8px 8px 0 0', fontSize: '15px', fontWeight: '600', letterSpacing: '0.3px'
-  }
+    inputStyle: {
+        width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+        borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box'
+    },
+    labelStyle: {
+        display: 'block', fontSize: '13px', fontWeight: '600',
+        color: '#374151', marginBottom: '6px'
+    },
+    buttonStylePrimary: {
+        padding: '10px 20px', background: '#3b82f6', color: 'white',
+        border: 'none', borderRadius: '4px', cursor: 'pointer',
+        fontWeight: '500', fontSize: '14px'
+    },
+    cardStyle: {
+        border: '1px solid #e5e7eb', borderRadius: '6px', padding: '16px',
+        marginBottom: '15px', cursor: 'pointer', transition: 'all 0.15s',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+    },
+    cardHover: {
+        borderColor: '#3b82f6',
+        boxShadow: '0 4px 6px rgba(59, 130, 246, 0.1)'
+    },
+    headerStyle: {
+        background: '#ef4444', color: 'white', padding: '12px 16px', margin: '0',
+        borderRadius: '8px 8px 0 0', fontSize: '15px', fontWeight: '600', letterSpacing: '0.3px'
+    }
 };
 
 const LMOnboardModal = ({ isOpen, onClose, onAddModel }) => { // Removed 'step' and 'onPublicSelect' props

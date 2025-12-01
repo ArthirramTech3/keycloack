@@ -3,8 +3,7 @@ import { useState } from 'react';
 
 const CreateRoleModal = ({ isOpen, onClose, onCreate }) => {
     const [formData, setFormData] = useState({
-        roleID: '',
-        roleName: '',
+        name: '',
         description: '',
         status: 'Active'
     });
@@ -15,13 +14,13 @@ const CreateRoleModal = ({ isOpen, onClose, onCreate }) => {
     };
 
     const handleSubmit = () => {
-        if (!formData.roleID || !formData.roleName) {
-            alert('Role ID and Name are required.');
+        if (!formData.name) {
+            alert('Role Name is required.');
             return;
         }
         onCreate(formData);
         // Reset form
-        setFormData({ roleID: '', roleName: '', description: '', status: 'Active' });
+        setFormData({ name: '', description: '', status: 'Active' });
     };
 
     if (!isOpen) return null;
@@ -37,11 +36,8 @@ const CreateRoleModal = ({ isOpen, onClose, onCreate }) => {
                 
                 <div style={{ padding: '20px', display: 'grid', gap: '15px' }}>
                     
-                    {/* Role ID */}
-                    <div><label style={labelStyle}>Role ID</label><input type="text" name="roleID" value={formData.roleID} onChange={handleChange} style={inputStyle} placeholder="Enter Role ID (e.g., R009)" /></div>
-                    
                     {/* Role Name */}
-                    <div><label style={labelStyle}>Role Name</label><input type="text" name="roleName" value={formData.roleName} onChange={handleChange} style={inputStyle} placeholder="Enter role name" /></div>
+                    <div><label style={labelStyle}>Role Name</label><input type="text" name="name" value={formData.name} onChange={handleChange} style={inputStyle} placeholder="Enter role name" /></div>
                     
                     {/* Description */}
                     <div><label style={labelStyle}>Description</label><textarea name="description" value={formData.description} onChange={handleChange} style={{...inputStyle, minHeight: '60px'}} placeholder="Enter role description..." /></div>

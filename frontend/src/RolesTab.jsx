@@ -43,9 +43,9 @@ const handleCreateRole = async (newRoleData) => {
     
     // --- FIX: Create the payload expected by the FastAPI backend ---
     const payload = {
-        // Map the user-entered 'Role Name' field (assuming it's named 'roleName' 
+        // Map the user-entered 'Role Name' field (assuming it's named 'name' 
         // in newRoleData) to the required backend field 'name'.
-        name: newRoleData.roleName || newRoleData.id, 
+        name: newRoleData.name, 
         
         // Pass all other data fields directly
         description: newRoleData.description,
