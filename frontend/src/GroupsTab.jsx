@@ -93,6 +93,20 @@ const GroupsTab = () => {
             setLoading(false);
         }
     };
+
+    const handleDeleteGroup = async (groupId, groupName) => {
+        if (window.confirm(`Are you sure you want to delete group ${groupName}?`)) {
+            setLoading(true);
+            try {
+                await api.delete(`/${GROUP_BASE_PATH}/${groupId}`);
+                await fetchGroups();
+            } catch (error) {
+                alert(`Deletion Failed: ${error.response?.data?.detail || 'Unknown error'}`);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
     
     // HANDLERS TO OPEN MODALS
     const handleEditClick = (group) => {
@@ -142,7 +156,7 @@ const GroupsTab = () => {
                             <td style={cellStyle}>{group.createdBy}</td>
                             <td style={{...cellStyle, textAlign: 'center'}}>
                                 <button onClick={() => handleEditClick(group)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', marginRight: '8px', fontSize: '14px' }}>Edit</button>
-                                <button onClick={() => handleDeleteGroup(group.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}>Delete</button>
+                                <button onClick={() => handleDeleteGroup(group.id, group.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}>Delete</button>
                             </td>
                         </tr>
                     ))}

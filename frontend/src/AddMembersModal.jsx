@@ -61,20 +61,23 @@ const fetchUsersAndMembers = async (groupId) => {
     const handleAddMembers = async () => {
         if (selectedUsers.length === 0) return;
 
-        setLoading(true);
-        try {
-            // API call to add members to the group
-            await api.post(`/groups/${group.id}/members`, { 
-                members_ids: selectedUsers 
-            });
-            
-            alert(`${selectedUsers.length} member(s) added successfully.`);
-            onClose();      // Close modal
-            onUpdate();     // Refresh GroupsTab data
-        } catch (error) {
-            alert(`Failed to add members: ${error.response?.data?.detail || 'Unknown error'}`);
-        } finally {
-            setLoading(false);
+    setLoading(true);
+    // Keycloak adds members one by one via the user's endpoint
+    const promises = selectedUsers.map(userId => {
+        return api.put(`/users/${userId}/groups/${group.id}`);
+    });
+
+    try {
+        await Promise.all(promises);
+        alert(`${selectedUsers.length} member(s) added successfully.`);
+        // Refetch data in the modal to update lists
+        await fetchUsersAndMembers(group.id);
+        setSelectedUsers([]); // Clear selection
+        onUpdate(); // Also refresh the main GroupsTab
+    } catch (error) {
+        alert(`Failed to add members: ${error.response?.data?.detail || 'One or more additions failed.'}`);
+    } finally {
+        setLoading(false);
         }
     };
     

@@ -76,6 +76,9 @@ class UserUpdate(BaseModel):
     firstName: Optional[str] = None
     lastName: Optional[str] = None
 
+class UserStatusUpdate(BaseModel):
+    enabled: bool
+
 class GroupCreate(BaseModel):
     name: str
 
@@ -288,6 +291,18 @@ async def update_user(user_id: str, user_data: UserUpdate):
         else:
             raise HTTPException(status_code=response.status_code, detail="Failed to update user.")
 
+@admin_router.put("/users/{user_id}/status", dependencies=[Depends(verify_admin_role)])
+async def update_user_status(user_id: str, status_data: UserStatusUpdate):
+    """Updates a user's enabled status in Keycloak."""
+    payload = {"enabled": status_data.enabled}
+    admin_token = await get_admin_token()
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"}
+        response = await client.put(f"{KEYCLOAK_URL}/admin/realms/{REALM}/users/{user_id}", headers=headers, json=payload)
+        if response.status_code == 204:
+            return {"message": "User status updated successfully."}
+        raise HTTPException(status_code=response.status_code, detail="Failed to update user status.")
+
 @admin_router.delete("/users/{user_id}", dependencies=[Depends(verify_admin_role)])
 async def delete_user(user_id: str):
     admin_token = await get_admin_token()
@@ -331,6 +346,41 @@ async def update_group(group_id: str, group_data: GroupUpdate):
             return {"message": "Group updated successfully."}
         else:
             raise HTTPException(status_code=response.status_code, detail="Failed to update group.")
+
+@admin_router.delete("/groups/{group_id}", dependencies=[Depends(verify_admin_role)])
+async def delete_group(group_id: str):
+    admin_token = await get_admin_token()
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        response = await client.delete(f"{KEYCLOAK_URL}/admin/realms/{REALM}/groups/{group_id}", headers=headers)
+        if response.status_code == 204:
+            return {"message": "Group deleted successfully."}
+        else:
+            raise HTTPException(status_code=response.status_code, detail="Failed to delete group.")
+
+@admin_router.get("/groups/{group_id}/members", response_model=List[Dict[str, Any]], dependencies=[Depends(verify_admin_role)])
+async def get_group_members(group_id: str):
+    admin_token = await get_admin_token()
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        response = await client.get(f"{KEYCLOAK_URL}/admin/realms/{REALM}/groups/{group_id}/members", headers=headers)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Failed to fetch group members.")
+        return response.json()
+
+@admin_router.post("/groups/{group_id}/members", dependencies=[Depends(verify_admin_role)])
+async def add_group_members(group_id: str, member_data: Dict[str, List[str]]):
+    admin_token = await get_admin_token()
+    user_id = member_data.get("user_id") # Assuming the frontend sends a user_id
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID is required.")
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        # Keycloak adds a user to a group via the user's endpoint, not the group's
+        response = await client.put(f"{KEYCLOAK_URL}/admin/realms/{REALM}/users/{user_id}/groups/{group_id}", headers=headers)
+        if response.status_code == 204:
+            return {"message": "User added to group successfully."}
+        raise HTTPException(status_code=response.status_code, detail="Failed to add user to group.")
 
 # --- Role Management Endpoints ---
 @admin_router.get("/roles", response_model=List[Dict[str, Any]], dependencies=[Depends(verify_admin_role)])

@@ -9,9 +9,9 @@ security = HTTPBearer()
 
 # Keycloak configuration
 KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://localhost:8080")
-REALM = os.getenv("KEYCLOAK_REALM", "myrealm")
-CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", "myclient")
-CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", "your-client-secret")
+REALM = os.getenv("KEYCLOAK_REALM", "cybersecurity-realm")
+CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", "cybersecurity-frontend")
+CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", "0xISuGJ0ZHpQ7DTChfh1BWBd6RCNon0n")
 
 async def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify the JWT token and check if user has admin role"""
@@ -38,15 +38,6 @@ async def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends
             if not token_data.get("active"):
                 raise HTTPException(status_code=401, detail="Token is not active")
             
-            # Check if user has admin role
-            realm_access = token_data.get("realm_access", {})
-            roles = realm_access.get("roles", [])
-            
-            if "admin" not in roles:
-                raise HTTPException(
-                    status_code=403, 
-                    detail="Access denied. Admin role required."
-                )
             
             return token_data
             

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const styles = {
     container: {
@@ -15,15 +15,6 @@ const styles = {
         fontWeight: 'bold',
         color: '#1f2937',
         marginBottom: '20px'
-    },
-    successBanner: {
-        background: '#dcfce7',
-        color: '#166534',
-        padding: '12px',
-        borderRadius: '8px',
-        textAlign: 'center',
-        fontWeight: '500',
-        marginBottom: '25px'
     },
     detailsSection: {
         marginBottom: '25px'
@@ -55,6 +46,27 @@ const styles = {
         cursor: 'pointer',
         fontWeight: '600',
         fontSize: '15px'
+    },
+    sectionTitle: {
+        color: '#374151',
+        marginBottom: '15px',
+        fontSize: '18px',
+        fontWeight: '600',
+        borderBottom: '1px solid #e5e7eb',
+        paddingBottom: '10px'
+    },
+    formRow: {
+        display: 'flex',
+        gap: '20px',
+        marginBottom: '15px',
+        alignItems: 'center'
+    },
+    formControl: {
+        flex: 1
+    },
+    input: {
+        width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
     }
 };
 
@@ -67,13 +79,21 @@ const LMThresholdPage = ({ model, setCurrentPage }) => {
         status: 'inactive'
     };
 
+    const [threshold, setThreshold] = useState('');
+    const [timeLimit, setTimeLimit] = useState('per_day');
+    const [assignType, setAssignType] = useState('users');
+    const [selectedAssignees, setSelectedAssignees] = useState([]);
+
+    // Mock data for assignment dropdowns
+    const mockUsers = [{ id: 'user1', name: 'Kisan' }, { id: 'user2', name: 'Santhosh' }];
+    const mockGroups = [{ id: 'group1', name: 'Development' }, { id: 'group2', name: 'DevOps' }];
+
     return (
         <div style={styles.container}>
             <h2 style={styles.header}>Set User Thresholds</h2>
-            <div style={styles.successBanner}>LM configuration created successfully!</div>
 
             <div style={styles.detailsSection}>
-                <h3 style={{ color: '#374151', marginBottom: '10px' }}>Model Details</h3>
+                <h3 style={styles.sectionTitle}>Model Details</h3>
                 <div style={styles.detailItem}>
                     <span style={styles.detailLabel}>Provider:</span>
                     <span style={styles.detailValue}>{displayModel.provider}</span>
@@ -88,7 +108,55 @@ const LMThresholdPage = ({ model, setCurrentPage }) => {
                 </div>
                 <div style={styles.detailItem}>
                     <span style={styles.detailLabel}>Status:</span>
-                    <span   style={{ color: displayModel.status === 'active' ? '#16a34a' : '#dc2626' }}>{displayModel.status}</span>
+                    <span style={{ color: displayModel.status === 'active' ? '#16a34a' : '#dc2626', fontWeight: 'bold' }}>
+                        {displayModel.status ? displayModel.status.toUpperCase() : 'INACTIVE'}
+                    </span>
+                </div>
+            </div>
+
+            <div style={styles.detailsSection}>
+                <h3 style={styles.sectionTitle}>User Thresholds</h3>
+                <div style={styles.formRow}>
+                    <div style={styles.formControl}>
+                        <label style={styles.detailLabel}>Threshold Limit per User</label>
+                        <input type="number" value={threshold} onChange={e => setThreshold(e.target.value)} style={styles.input} placeholder="e.g., 100" />
+                    </div>
+                    <div style={styles.formControl}>
+                        <label style={styles.detailLabel}>Time Limit</label>
+                        <select value={timeLimit} onChange={e => setTimeLimit(e.target.value)} style={styles.input}>
+                            <option value="per_day">Per Day</option>
+                            <option value="per_week">Per Week</option>
+                            <option value="per_month">Per Month</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div style={styles.detailsSection}>
+                <h3 style={styles.sectionTitle}>Assign to Users/Groups</h3>
+                <div style={styles.formRow}>
+                    <div style={styles.formControl}>
+                        <label style={styles.detailLabel}>Assign to</label>
+                        <select value={assignType} onChange={e => setAssignType(e.target.value)} style={styles.input}>
+                            <option value="users">Users</option>
+                            <option value="groups">Groups</option>
+                        </select>
+                    </div>
+                    <div style={{ ...styles.formControl, flex: 2 }}>
+                        <label style={styles.detailLabel}>Select {assignType === 'users' ? 'Users' : 'Groups'}</label>
+                        <select
+                            multiple
+                            value={selectedAssignees}
+                            onChange={e => setSelectedAssignees(Array.from(e.target.selectedOptions, option => option.value))}
+                            style={{ ...styles.input, height: '100px' }}
+                        >
+                            {(assignType === 'users' ? mockUsers : mockGroups).map(item => (
+                                <option key={item.id} value={item.id}>
+                                    {item.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 

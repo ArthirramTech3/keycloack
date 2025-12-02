@@ -46,6 +46,16 @@ const Sidebar = ({ currentPage, onNavigate }) => (
                 User
             </button>
         </div>
+        {/* NEW POLICY SECTION */}
+        <div style={{ padding: '0 20px', marginBottom: '30px' }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#9ca3af' }}>POLICY MANAGEMENT</h3>
+            <button
+                onClick={() => onNavigate('createPolicy')}
+                style={getSidebarItemStyle(currentPage === 'createPolicy')}
+            >
+                Create Policy
+            </button>
+        </div>
         {/* <div style={{ padding: '0 20px', marginBottom: '30px' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#9ca3af' }}>USER MANAGEMENT</h3>
             <button

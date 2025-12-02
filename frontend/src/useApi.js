@@ -32,8 +32,9 @@ const useApi = () => {
         (response) => response,
         (error) => {
             console.error("API Error:", error.response || error);
-            const message = error.response?.data?.detail || "An unexpected error occurred.";
-            alert(`API Error: ${message}`);
+            // Removing the disruptive alert. Errors should be handled in the component's catch block.
+            // const message = error.response?.data?.detail || "An unexpected error occurred.";
+            // alert(`API Error: ${message}`);
             return Promise.reject(error);
         }
     );

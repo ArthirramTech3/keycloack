@@ -14,6 +14,7 @@ import LanguageModelsDashboard from './components/LanguageModelsDashboard';
 import UserInfoForm from './components/UserInfoForm';
 import LMOnboardPage from './LMOnboardPage';
 import LMThresholdPage from './LMThresholdPage';
+import CreatePolicyPage from './CreatePolicyPage'; // <-- IMPORT THE NEW PAGE
 // --- NEW IMPORT ---
  import { jwtDecode } from 'jwt-decode'; // <-- ADD THIS IMPORT
 
@@ -112,6 +113,12 @@ const handleLoginSuccess = async (tokenData) => {
     content = (
       <ProtectedRoute roles={["admin"]}>
         <LMThresholdPage model={selectedModelForThreshold} setCurrentPage={setCurrentPage} />
+      </ProtectedRoute>
+    );
+  } else if (currentPage === "createPolicy") { // <-- ADD ROUTING FOR THE NEW PAGE
+    content = (
+      <ProtectedRoute roles={["admin"]}>
+        <CreatePolicyPage setCurrentPage={setCurrentPage} />
       </ProtectedRoute>
     );
   } else {
