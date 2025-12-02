@@ -55,7 +55,7 @@ const GroupsTab = () => {
     
         try {
             // Use the corrected payload
-            await api.post('/groups/create', payload); 
+            await api.post(`/${GROUP_BASE_PATH}/create`, payload); 
             
             setShowCreateModal(false);
             await fetchGroups();

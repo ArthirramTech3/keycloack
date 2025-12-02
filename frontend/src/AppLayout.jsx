@@ -1,6 +1,6 @@
 // AppLayout.jsx
 import { useKeycloak } from "@react-keycloak/web";
-
+import { useState, useEffect } from 'react';
 // --- Layout Components ---
 const SIDEBAR_WIDTH = '280px';
 const Header = ({ username, onLogout }) => (
@@ -118,7 +118,7 @@ export default function AppLayout({ currentPage, setCurrentPage, children }) {
             
             {/* Main Content Area (Offset by Sidebar width and Header height) */}
             <main style={mainContentStyle}>
-                {children}
+                {children} {/* This will render the LanguageModelsDashboard or LMOnboardPage */}
             </main>
         </div>
     );

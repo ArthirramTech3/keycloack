@@ -26,8 +26,7 @@ const UsersTab = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // CHANGE THIS LINE: Ensure the path is correct
-            const response = await api.get('/users'); // Use '/admin/users' or just '/users' depending on your useApi setup
+            const response = await api.get('/users'); 
             
             setUsers(response.data);
         } catch (error) {
@@ -46,7 +45,7 @@ const UsersTab = () => {
         setLoading(true);
         try {
             // Data structure must match the FastAPI UserCreate model
-            await api.post('/users/create', { // Corrected path to /admin/users/create
+            await api.post('/users/create', { 
                 username: newUserData.username,
                 password: newUserData.password, 
                 email: newUserData.email,
@@ -71,7 +70,7 @@ const UsersTab = () => {
         if (window.confirm(`Are you sure you want to delete user ${username}?`)) {
             setLoading(true);
             try {
-                await api.delete(`/users/${userId}`); // Corrected path to /admin/users/{userId}
+                await api.delete(`/users/${userId}`); 
                 await fetchUsers(); // Reload data
             } catch (error) {
                 const errorMessage = error.response?.data?.detail || "User deletion failed.";
@@ -86,7 +85,7 @@ const UsersTab = () => {
     const handleToggleStatus = async (userId, currentStatus) => {
         setLoading(true);
         try {
-            await api.put(`/users/${userId}/status`, { enabled: !currentStatus }); // Corrected path
+            await api.put(`/users/${userId}/status`, { enabled: !currentStatus }); 
             await fetchUsers(); // Reload data
         } catch (error) {
             const errorMessage = error.response?.data?.detail || "Status update failed.";

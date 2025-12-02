@@ -1,59 +1,57 @@
 // LanguageModelsDashboard.jsx (UPDATED)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useKeycloak } from '@react-keycloak/web'; // <-- NEW: Import useKeycloak
+import useApi from '../useApi'; // <-- NEW: Import useApi hook
 import ModelCard from './ModelCard'; 
 import LMOnboardModal from './LMOnboardModal'; 
 import LMSelectionPage from '../LMSelectionPage'; // <-- NEW IMPORT
 
-const initialModels = [
-    { name: 'OPEN AI', version: 'OMINI 4.1', isPrivate: false, buttonColor: '#6b7280' },
-    { name: 'GEMENI', version: 'FLASH 3.1', isPrivate: false, buttonColor: '#dc2626' },
-    { name: 'CLAUDE', version: 'SONNET 4', isPrivate: false, buttonColor: '#16a34a' },
-    { name: 'QWEN', version: 'FLASH 3.1', isPrivate: true, buttonColor: '#9333ea' },
-    { name: 'GEMENI', version: 'FLASH 3.1', isPrivate: false, buttonColor: '#dc2626' }, 
-    { name: 'OLLAMA', version: 'CEREBREAL', isPrivate: true, buttonColor: '#111827' },
-];
-
-const LanguageModelsDashboard = () => {
+const LanguageModelsDashboard = ({ setCurrentPage, setSelectedModelForThreshold }) => {
   const [showFormModal, setShowFormModal] = useState(false); // Controls the modal FORM
   const [models, setModels] = useState([]); 
+  const [loading, setLoading] = useState(true); // <-- NEW: Loading state
+  const { keycloak } = useKeycloak(); // <-- NEW: Get keycloak instance
+  
+  // Memoize the api instance to prevent re-renders from triggering useEffect.
+  const api = useApi();
+  const memoizedApi = useMemo(() => api, [keycloak.token]);
   
   // Controls the main rendering: 'SELECTION_PAGE', 'DASHBOARD'
-  const [currentView, setCurrentView] = useState('DASHBOARD'); 
+  const [currentView, setCurrentView] = useState(null); // Initialize to null to indicate loading/undetermined state
 
-  // --- 1. EFFECT TO LOAD MODELS AND SET INITIAL VIEW ---
+  // --- 1. EFFECT TO LOAD MODELS FROM API ---
   useEffect(() => {
-      const storedModelsJSON = localStorage.getItem('onboarded_models');
-      let loadedModels = [];
-      
-      if (storedModelsJSON) {
-          loadedModels = JSON.parse(storedModelsJSON);
-      } else {
-          // If you want to show the selection page on first run even if initialModels is set:
-          // loadedModels = []; // <-- Uncomment this line to force selection page on startup
-          loadedModels = initialModels; // <-- Keep this line to show default models
-      }
-      
-      setModels(loadedModels);
-      
-      // Determine the initial view based on loaded models
-      if (loadedModels.length === 0) {
-          setCurrentView('SELECTION_PAGE'); // Show the full-page selection screen
-      } else {
-          setCurrentView('DASHBOARD'); // Show the main dashboard
-      }
-      
-  }, []);
+    const fetchModels = async () => {
+      if (keycloak.authenticated) {
+        setLoading(true);
+        try {
+          // Fetch user-specific models, or public models as a fallback
+          const response = await memoizedApi.get(`/models`);
+          const loadedModels = response.data.map(model => ({
+            name: model.model_name.toUpperCase(),
+            version: model.provider,
+            isPrivate: !model.is_public,
+            buttonColor: '#3b82f6' // Default color
+          }));
 
-  // --- 2. EFFECT TO SAVE MODELS WHENEVER STATE CHANGES ---
-  useEffect(() => {
-      if (models.length > 0) {
-          localStorage.setItem('onboarded_models', JSON.stringify(models));
-          // Once a model is added, switch to the dashboard view
-          if (currentView === 'SELECTION_PAGE') {
-              setCurrentView('DASHBOARD');
+          setModels(loadedModels);
+
+          if (loadedModels.length === 0) {
+            setCurrentView('SELECTION_PAGE');
+          } else {
+            setCurrentView('DASHBOARD');
           }
+        } catch (error) {
+          console.error("Failed to fetch models:", error);
+          setCurrentView('SELECTION_PAGE'); // Fallback to selection page on error
+        } finally {
+          setLoading(false);
+        }
       }
-  }, [models]);
+    };
+
+    fetchModels();
+  }, [keycloak.authenticated, memoizedApi]);
 
 
   const handleAddModel = (newModelData) => {
@@ -64,8 +62,12 @@ const LanguageModelsDashboard = () => {
         buttonColor: '#3b82f6', 
     };
     
-    setModels(prevModels => [newModel, ...prevModels]); 
+    setModels(prevModels => [newModel, ...prevModels]);
     setShowFormModal(false); // Close the modal after adding
+    // If this was the first model, switch to the dashboard view
+    if (currentView === 'SELECTION_PAGE') {
+        setCurrentView('DASHBOARD');
+    }
   };
   
   // --- HANDLERS ---
@@ -79,14 +81,19 @@ const LanguageModelsDashboard = () => {
   }
   
   const handlePublicSelect = () => {
-      // Called from the LMSelectionPage (full page)
-      setShowFormModal(true); // Open the configuration modal form
+      // NEW: Navigate to the full onboarding page
+      setCurrentPage('LMOnboard');
   }
   
   const handlePrivateSelect = () => {
       alert("Private Hosted is not yet configured.");
   }
 
+
+  // --- LOADING VIEW ---
+  if (loading || currentView === null) { // Show loading until currentView is determined
+    return <div style={{ padding: '40px', textAlign: 'center' }}>Loading models...</div>;
+  }
 
   // --- CONDITIONAL RENDER: SHOW SELECTION PAGE (FULL PAGE) ---
   if (currentView === 'SELECTION_PAGE') {
@@ -140,7 +147,11 @@ const LanguageModelsDashboard = () => {
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '30px', maxWidth: '1500px'
       }}>
         {models.map((model, idx) => (
-          <ModelCard key={idx} {...model} />
+          <ModelCard 
+            key={idx} 
+            {...model} 
+            onConfigure={() => { setSelectedModelForThreshold(model); setCurrentPage('LMThreshold'); }} 
+          />
         ))}
       </div>
 

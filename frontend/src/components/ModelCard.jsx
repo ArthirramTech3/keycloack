@@ -1,6 +1,6 @@
 // ModelCard.jsx
 
-const ModelCard = ({ name, version, isPrivate, buttonColor }) => {
+const ModelCard = ({ name, version, isPrivate, buttonColor, onConfigure }) => {
     return (
       <div style={{
         background: 'white',
@@ -43,7 +43,9 @@ const ModelCard = ({ name, version, isPrivate, buttonColor }) => {
           </ul>
         </div>
   
-        <button style={{
+        <button
+          onClick={onConfigure}
+          style={{
           width: '100%',
           padding: '11px',
           background: buttonColor,
