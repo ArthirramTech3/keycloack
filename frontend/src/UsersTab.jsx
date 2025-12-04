@@ -168,7 +168,7 @@ const UsersTab = () => {
                         <tr key={user.id}>
                             <td style={cellStyle}>{user.id.substring(0, 5)}...</td>
                             <td style={cellStyle}>{user.username}</td>
-                            <td style={cellStyle}>{user.addedGroups || 'None'}</td>
+                            <td style={cellStyle}>{(user.groups && user.groups.length > 0) ? user.groups.join(', ') : 'None'}</td>
                             <td style={cellStyle}>{user.roles || 'None'}</td>
                             <td style={cellStyle}>
                                 <span 
@@ -185,14 +185,14 @@ const UsersTab = () => {
                                     onClick={() => handleEditClick(user)} 
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', marginRight: '8px', fontSize: '14px' }}
                                 >
-                                    Edit
+                                    ✏️ 
                                 </button>
                                 {/* --------------------------------------- */}
                                 <button 
                                     onClick={() => handleDeleteUser(user.id, user.username)} 
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}
                                 >
-                                    Delete
+                                    🗑️
                                 </button>
                             </td>
                         </tr>

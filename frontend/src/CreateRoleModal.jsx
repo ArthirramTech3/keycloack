@@ -41,7 +41,8 @@ const CreateRoleModal = ({ isOpen, onClose, onCreate }) => {
     const [formData, setFormData] = useState({
         roleId: '',
         roleName: '',
-        description: ''
+        description: '',
+        status: 'Active'
     });
     
     // State stores permissions as an array of strings: ['User Management:view', 'Role Management:edit', ...]
@@ -210,7 +211,15 @@ const CreateRoleModal = ({ isOpen, onClose, onCreate }) => {
                     <div style={styles.formGroup}>
                         <label style={styles.label}>Description</label>
                         <textarea name="description" placeholder="Briefly describe the purpose of this role" style={styles.textarea} value={formData.description} onChange={handleChange} />
+                    </div> 
+                    <div style={styles.formGroup}>
+                        <label style={styles.label}>Status</label>
+                        <select name="status" value={formData.status} onChange={handleChange} style={styles.input}>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
                     </div>
+
 
                     {/* Permission Matrix (The Granular View) */}
                     <div style={styles.formGroup}>

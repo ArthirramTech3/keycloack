@@ -35,18 +35,9 @@ const Sidebar = ({ currentPage, onNavigate }) => (
         position: 'fixed',
         top: '60px', // Below the header
         left: 0,
-        color: 'white'
+        color: 'white',
+        paddingBottom: '60px' // Space for the footer
     }}>
-        <div style={{ padding: '0 20px', marginBottom: '30px' }}>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#9ca3af' }}>USER MANAGEMENT</h3>
-            <button
-                onClick={() => onNavigate('usermanagement')} // Assuming this is where User details go
-                style={getSidebarItemStyle(currentPage === 'usermanagement')}
-            >
-                User
-            </button>
-        </div>
-        {/* NEW POLICY SECTION */}
         <div style={{ padding: '0 20px', marginBottom: '30px' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#9ca3af' }}>POLICY MANAGEMENT</h3>
             <button
@@ -56,32 +47,31 @@ const Sidebar = ({ currentPage, onNavigate }) => (
                 Create Policy
             </button>
         </div>
-        {/* <div style={{ padding: '0 20px', marginBottom: '30px' }}>
+        <div style={{ padding: '0 20px', marginBottom: '30px' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#9ca3af' }}>USER MANAGEMENT</h3>
             <button
-                onClick={() => onNavigate('usermanagement')} // <-- Navigation state update
+                onClick={() => onNavigate('usermanagement')} // Assuming this is where User details go
                 style={getSidebarItemStyle(currentPage === 'usermanagement')}
             >
                 User
             </button>
-        </div> */}
-        
+        </div>
+
         <div style={{ padding: '0 20px' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#9ca3af' }}>MODEL & SOURCE MANAGEMENT</h3>
-            {/* <button
-                onClick={() => onNavigate('dashboard')} // Dashboard showing all models
+            <button
+                onClick={() => onNavigate('dashboard')}
                 style={getSidebarItemStyle(currentPage === 'dashboard')}
             >
-                Dashboard
-            </button> */}
+                Onboard Listing
+            </button>
             <button
-                onClick={() => onNavigate('LMOnboard')} // LM Onboard form/modal
+                onClick={() => onNavigate('LMOnboard')}
                 style={getSidebarItemStyle(currentPage === 'LMOnboard')}
             >
                 LM Onboard
             </button>
         </div>
-        
         {/* User Info / Footer Slot (Bottom-Left) */}
         <div style={footerUserInfoStyle}>
             <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Supurayan</span>

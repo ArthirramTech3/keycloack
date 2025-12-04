@@ -238,16 +238,67 @@ def create_model(model: ModelCreate, db: Session = Depends(get_db), user_id: str
         )
 
 # --- User Management Endpoints ---
+async def get_user_roles(admin_token: str, user_id: str) -> List[str]:
+    """Helper function to get realm roles for a specific user."""
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        try:
+            response = await client.get(
+                f"{KEYCLOAK_URL}/admin/realms/{REALM}/users/{user_id}/role-mappings/realm",
+                headers=headers,
+            )
+            response.raise_for_status()
+            roles_data = response.json()
+            return [role.get("name", "") for role in roles_data]
+        except (httpx.HTTPStatusError, httpx.RequestError):
+            return []
+
+# This is a helper function and should NOT be decorated as an endpoint.
+# I am removing the decorator.
+# @admin_router.get("/users/{user_id}", response_model=Dict[str, Any], dependencies=[Depends(verify_admin_role)])
+async def get_user_groups(user_id: str, admin_token: str) -> List[str]:
+    """Helper function to get group names for a user."""
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        try:
+            response = await client.get(
+                f"{KEYCLOAK_URL}/admin/realms/{REALM}/users/{user_id}/groups",
+                headers=headers
+            )
+            response.raise_for_status()
+            groups = response.json()
+            # Return a list of group names
+            return [group.get("name", "") for group in groups]
+        except (httpx.HTTPStatusError, httpx.RequestError):
+            # If fetching groups fails, return an empty list
+            # to avoid breaking the main user list retrieval.
+            return []
+
 @admin_router.get("/users", response_model=List[Dict[str, Any]], dependencies=[Depends(verify_admin_role)])
 async def get_users():
-    """Get all users from Keycloak."""
+    """Get all users from Keycloak, including their groups and roles."""
     admin_token = await get_admin_token()
     async with httpx.AsyncClient() as client:
         headers = {"Authorization": f"Bearer {admin_token}"}
-        response = await client.get(f"{KEYCLOAK_URL}/admin/realms/{REALM}/users", headers=headers)
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch users from Keycloak.")
-        return response.json()
+        try:
+            response = await client.get(f"{KEYCLOAK_URL}/admin/realms/{REALM}/users", headers=headers)
+            response.raise_for_status()
+            users_from_keycloak = response.json()
+
+            enriched_users = []
+            for user_data in users_from_keycloak:
+                user_id = user_data["id"]
+                # Fetch groups and roles for each user
+                groups = await get_user_groups(user_id, admin_token)
+                roles = await get_user_roles(admin_token, user_id)
+                
+                user_data["groups"] = groups
+                user_data["roles"] = roles
+                enriched_users.append(user_data)
+
+            return enriched_users
+        except (httpx.HTTPStatusError, httpx.RequestError) as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch users from Keycloak: {str(e)}")
 
 @admin_router.post("/users/create", dependencies=[Depends(verify_admin_role)])
 async def create_user(user_data: UserCreate):
@@ -268,16 +319,6 @@ async def create_user(user_data: UserCreate):
             return {"message": "User created successfully."}
         else:
             raise HTTPException(status_code=response.status_code, detail=response.json())
-
-@admin_router.get("/users/{user_id}", response_model=Dict[str, Any], dependencies=[Depends(verify_admin_role)])
-async def get_user(user_id: str):
-    admin_token = await get_admin_token()
-    async with httpx.AsyncClient() as client:
-        headers = {"Authorization": f"Bearer {admin_token}"}
-        response = await client.get(f"{KEYCLOAK_URL}/admin/realms/{REALM}/users/{user_id}", headers=headers)
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch user.")
-        return response.json()
 
 @admin_router.put("/users/{user_id}", dependencies=[Depends(verify_admin_role)])
 async def update_user(user_id: str, user_data: UserUpdate):

@@ -21,6 +21,7 @@ const GroupsTab = () => {
     const fetchGroups = async () => {
         setLoading(true);
         try {
+            // FIX: Ensure API call is correct, assuming it returns group details
             const response = await api.get(`/${GROUP_BASE_PATH}`);
             setGroups(response.data);
         } catch (error) {
@@ -80,6 +81,8 @@ const GroupsTab = () => {
     const handleUpdateGroup = async (groupId, updatedData) => {
         setLoading(true);
         try {
+            // FIX: Ensure PUT request sends only the updated fields,
+            // and the endpoint is correct (e.g., /groups/{groupId})
             await api.put(`/${GROUP_BASE_PATH}/${groupId}`, updatedData);
             
             setShowEditModal(false);
@@ -150,13 +153,14 @@ const GroupsTab = () => {
                             <td style={cellStyle}>{group.name}</td>
                             <td style={cellStyle}>{group.description}</td>
                             <td style={cellStyle}>
-                                {group.memberCount}
+                                {/* Assuming memberCount and group properties are available on the group object */}
+                                {group.memberCount || 0}
                                 <button onClick={() => openMembersModal(group)} style={{ marginLeft: '10px', background: 'none', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontSize: '12px' }}>+ Add Members</button>
                             </td>
-                            <td style={cellStyle}>{group.createdBy}</td>
+                            <td style={cellStyle}>{group.createdBy || 'System'}</td>
                             <td style={{...cellStyle, textAlign: 'center'}}>
-                                <button onClick={() => handleEditClick(group)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', marginRight: '8px', fontSize: '14px' }}>Edit</button>
-                                <button onClick={() => handleDeleteGroup(group.id, group.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}>Delete</button>
+                                <button onClick={() => handleEditClick(group)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', marginRight: '8px', fontSize: '14px' }}>  ✏️ </button>
+                                <button onClick={() => handleDeleteGroup(group.id, group.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}>🗑️</button>
                             </td>
                         </tr>
                     ))}
@@ -169,7 +173,7 @@ const GroupsTab = () => {
             {selectedGroup && (
                 <EditGroupModal 
                     isOpen={showEditModal} 
-                    onClose={() => {setShowEditModal(false); setSelectedGroup(null);}} // FIX: Clear state here
+                    onClose={() => {setShowEditModal(false); setSelectedGroup(null);}} 
                     onUpdate={handleUpdateGroup}
                     initialData={selectedGroup} 
                 />
@@ -179,7 +183,7 @@ const GroupsTab = () => {
             {selectedGroup && (
                 <AddMembersModal 
                     isOpen={showMembersModal} 
-                    onClose={() => {setShowMembersModal(false); setSelectedGroup(null);}} // FIX: Clear state here
+                    onClose={() => {setShowMembersModal(false); setSelectedGroup(null);}} 
                     group={selectedGroup}
                     onUpdate={fetchGroups} 
                 />

@@ -55,10 +55,9 @@ const RolesTab = () => {
     const handleCreateRole = async (newRoleData) => {
         setLoading(true);
         const payload = {
-            name: newRoleData.roleName,
+            name: newRoleData.roleName, // FIX: Ensure payload uses 'name' as expected by the backend
             description: newRoleData.description,
-            // Note: 'permissions' and 'roleId' might need specific backend handling
-            // attributes: { permissions: newRoleData.permissions } 
+            attributes: { permissions: newRoleData.permissions || [] }
         };
 
         try {
@@ -67,6 +66,24 @@ const RolesTab = () => {
             await fetchRoles();
         } catch (error) {
             alert(`Creation Failed: ${error.response?.data?.detail || "Unknown error"}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateRole = async (originalRoleName, updatedData) => {
+        setLoading(true);
+        // The backend expects 'name' and 'description' in the body.
+        const payload = {
+            name: updatedData.name,
+            description: updatedData.description,
+        };
+        try {
+            await api.put(`/${ROLE_BASE_PATH}/${originalRoleName}`, payload);
+            setShowEditModal(false);
+            await fetchRoles();
+        } catch (error) {
+            alert(`Update Failed: ${error.response?.data?.detail || "Unknown error"}`);
         } finally {
             setLoading(false);
         }
@@ -192,6 +209,7 @@ const RolesTab = () => {
                     isOpen={showEditModal} 
                     onClose={() => setShowEditModal(false)} 
                     initialData={selectedRole}
+                    onUpdate={handleUpdateRole}
                 />
             )}
         </div>

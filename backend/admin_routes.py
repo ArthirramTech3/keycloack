@@ -15,6 +15,7 @@ CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", "0xISuGJ0ZHpQ7DTChfh1BWBd6RC
 
 async def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify the JWT token and check if user has admin role"""
+    print("--- CLINE: EXECUTING MODIFIED verify_admin_token ---")
     token = credentials.credentials
     
     try:
