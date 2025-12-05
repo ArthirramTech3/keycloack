@@ -8,3 +8,5 @@ SQLAlchemy
 python-dotenv
 httpx
 PyJWT
+passlib[bcrypt]
+python-multipart

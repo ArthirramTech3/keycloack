@@ -1,147 +1,176 @@
-// LMOnboardModal.jsx (SIMPLIFIED)
-import { useState } from 'react';
+import React, { useState } from 'react';
+import useApi from '../useApi'; // Adjust path as necessary
+import { useKeycloak } from '@react-keycloak/web';
 
-// --- STYLING (Keep all styles) ---
-const styles = {
-  inputStyle: {
-      width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
-      borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box'
-  },
-  labelStyle: {
-      display: 'block', fontSize: '13px', fontWeight: '600',
-      color: '#374151', marginBottom: '6px'
-  },
-  buttonStylePrimary: {
-      padding: '10px 20px', background: '#3b82f6', color: 'white',
-      border: 'none', borderRadius: '4px', cursor: 'pointer',
-      fontWeight: '500', fontSize: '14px'
-  },
-  cardStyle: {
-      border: '1px solid #e5e7eb', borderRadius: '6px', padding: '16px',
-      marginBottom: '15px', cursor: 'pointer', transition: 'all 0.15s',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-  },
-  cardHover: {
-      borderColor: '#3b82f6',
-      boxShadow: '0 4px 6px rgba(59, 130, 246, 0.1)'
-  },
-  headerStyle: {
-      background: '#ef4444', color: 'white', padding: '12px 16px', margin: '0',
-      borderRadius: '8px 8px 0 0', fontSize: '15px', fontWeight: '600', letterSpacing: '0.3px'
-  }
-};
-
-const LMOnboardModal = ({ isOpen, onClose, onAddModel }) => { // Removed 'step' and 'onPublicSelect' props
-  
-  const [formData, setFormData] = useState({
-    provider: 'Anthropic', model: 'Gemini Pro', apiEndpoint: '', apiKey: '', status: ''
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = () => {
-    onAddModel(formData);
-    setFormData({ // Reset form state
-      provider: 'Anthropic', model: 'Gemini Pro', apiEndpoint: '', apiKey: '', status: ''
+const LMOnboardModal = ({ isOpen, onClose, onSuccess }) => {
+    const { keycloak } = useKeycloak();
+    const api = useApi();
+    const [formData, setFormData] = useState({
+        model_name: '',
+        provider: '',
+        api_url: '',
+        api_key: '',
+        is_public: false,
     });
-    onClose(); 
-  };
-  
-  const handleDiscard = () => {
-    onClose(); 
-  }
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
 
-  if (!isOpen) return null;
-  
-  // --- CONFIGURATION FORM VIEW (Keep this function as-is) ---
-  const ConfigFormView = () => (
-    <>
-      <h2 style={styles.headerStyle}>LM Onboard Configuration</h2>
-      {/* ... (All form fields and buttons go here) ... */}
-      <div style={{ padding: '20px' }}>
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>Provider</label>
-          <select name="provider" value={formData.provider} onChange={handleChange} style={styles.inputStyle}>
-            <option value="Anthropic">Anthropic</option>
-            <option value="OpenAI">OpenAI</option>
-            <option value="Google">Google</option>
-            <option value="Alibaba">Alibaba</option>
-          </select>
+    if (!isOpen) return null;
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        setError(null);
+        setSuccessMessage(null);
+        try {
+            const token = keycloak.token;
+            if (!token) {
+                throw new Error("User not authenticated.");
+            }
+
+            // Include Authorization header for admin endpoint
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+            
+            const response = await api.post('/admin/models/create', formData, { headers });
+
+            if (response.status !== 200 && response.status !== 201) {
+                throw new Error(response.data.detail || 'Failed to onboard the model.');
+            }
+            setSuccessMessage('Model onboarded successfully!');
+            onSuccess(); // Trigger refresh in parent component
+            setTimeout(() => {
+                onClose(); // Close modal after a short delay
+            }, 1500);
+        } catch (err) {
+            console.error('Error onboarding model:', err);
+            setError(err.message || 'An unexpected error occurred.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDiscard = () => {
+        setFormData({
+            model_name: '',
+            provider: '',
+            api_url: '',
+            api_key: '',
+            is_public: false,
+        });
+        setError(null);
+        setSuccessMessage(null);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+            <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full m-4">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">LM Onboard Configuration</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Provider</label>
+                        <select
+                            name="provider"
+                            value={formData.provider}
+                            onChange={handleChange}
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                        >
+                            <option value="">Select Provider</option>
+                            <option value="OpenAI">OpenAI</option>
+                            <option value="Anthropic">Anthropic</option>
+                            <option value="Google AI Studio">Google AI Studio</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Models</label>
+                        <input
+                            type="text"
+                            name="model_name"
+                            value={formData.model_name}
+                            onChange={handleChange}
+                            placeholder="e.g., gpt-4, claude-3, gemini-pro"
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">API Endpoint</label>
+                        <input
+                            type="text"
+                            name="api_url"
+                            value={formData.api_url}
+                            onChange={handleChange}
+                            placeholder="Enter API endpoint URL"
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Key</label>
+                        <input
+                            type="password"
+                            name="api_key"
+                            value={formData.api_key}
+                            onChange={handleChange}
+                            placeholder="Enter API key"
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                    </div>
+
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            name="is_public"
+                            checked={formData.is_public}
+                            onChange={handleChange}
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="is_public" className="ml-2 block text-sm text-gray-900">
+                            Is Public
+                        </label>
+                    </div>
+
+                    {error && (
+                        <div className="text-red-500 text-sm mt-2">{error}</div>
+                    )}
+                    {successMessage && (
+                        <div className="text-green-600 text-sm mt-2">{successMessage}</div>
+                    )}
+
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={handleDiscard}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md border border-transparent hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                            disabled={isSubmitting}
+                        >
+                            Discard
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md border border-transparent hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? 'Saving...' : 'Save & Submit'}
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>Models</label>
-          <select name="model" value={formData.model} onChange={handleChange} style={styles.inputStyle}>
-            <option value="Gemini Pro">Gemini Pro</option>
-            <option value="Claude Sonnet 4">Claude Sonnet 4</option>
-            <option value="GPT-4">GPT-4</option>
-            <option value="Qwen Flash 3.1">Qwen Flash 3.1</option>
-          </select>
-        </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>API Endpoint</label>
-          <input
-            type="text" name="apiEndpoint" value={formData.apiEndpoint} onChange={handleChange}
-            placeholder="Enter API endpoint URL" style={styles.inputStyle}
-          />
-        </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>Key</label>
-          <input
-            type="password" name="apiKey" value={formData.apiKey} onChange={handleChange}
-            placeholder="Enter API key" style={styles.inputStyle}
-          />
-        </div>
-
-        <div style={{ marginBottom: '24px' }}>
-          <label style={styles.labelStyle}>Status</label>
-          <select name="status" value={formData.status} onChange={handleChange} style={styles.inputStyle}>
-            <option value="">Select status...</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={handleDiscard}
-            style={{ ...styles.buttonStylePrimary, background: '#6b7280' }}
-          >
-            Discard
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            style={styles.buttonStylePrimary}
-          >
-            Save & Submit
-          </button>
-        </div>
-      </div>
-    </>
-  );
-
-  // --- MAIN RENDER ---
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', zIndex: 100
-    }}>
-      <div style={{
-        background: 'white', borderRadius: '8px', padding: '0', width: '460px', 
-        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
-      }}>
-        <ConfigFormView /> {/* Only render the form */}
-      </div>
-    </div>
-  );
+    );
 };
 
 export default LMOnboardModal;

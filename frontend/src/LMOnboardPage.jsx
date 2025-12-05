@@ -1,126 +1,78 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useKeycloak } from '@react-keycloak/web';
-import useApi from './useApi'; // <-- 1. IMPORT THE useApi HOOK
-
-const styles = {
-  inputStyle: {
-      width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
-      borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box'
-  },
-  labelStyle: {
-      display: 'block', fontSize: '13px', fontWeight: '600',
-      color: '#374151', marginBottom: '6px'
-  },
-  buttonStylePrimary: {
-      padding: '10px 20px', background: '#3b82f6', color: 'white',
-      border: 'none', borderRadius: '4px', cursor: 'pointer',
-      fontWeight: '500', fontSize: '14px'
-  },
-  pageHeader: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      marginBottom: '20px',
-  }
-};
+import useApi from './useApi';
+import LMOnboardModal from './components/LMOnboardModal'; // Import the new modal component
+import ModelCard from './components/ModelCard'; // Assuming ModelCard exists for displaying models
 
 const LMOnboardPage = ({ setCurrentPage }) => {
   const { keycloak } = useKeycloak();
-  const api = useApi(); // <-- 2. INITIALIZE THE API HOOK
-  const [formData, setFormData] = useState({
-    model_name: 'Gemini Pro', provider: '', api_key: '', api_url: '', is_public: true
-  });
+  const api = useApi();
+  const [models, setModels] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const handleSubmit = async () => {
+  const fetchModels = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      // 3. USE THE API HOOK TO CREATE THE MODEL
-      const response = await api.post('/models/create', formData);
-      
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(response.data.detail || 'Failed to save the model.');
+      const response = await api.get('/admin/models'); // Fetch models from the backend
+      if (response.status === 200) {
+        setModels(response.data);
+      } else {
+        throw new Error(response.data.detail || 'Failed to fetch models.');
       }
-      alert('Model saved successfully!');
-      setCurrentPage('dashboard'); // Navigate back to the dashboard
-    } catch (error) {
-      console.error('Error saving model:', error);
-      alert(`An error occurred while saving the model: ${error.message}`);
+    } catch (err) {
+      console.error('Error fetching models:', err);
+      setError(`Failed to load models: ${err.message}`);
+    } finally {
+      setIsLoading(false);
     }
+  }, [api]);
+
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
+
+  const handleOnboardSuccess = () => {
+    setIsModalOpen(false);
+    fetchModels(); // Refresh the list of models
   };
 
-  const handleDiscard = () => {
-    setCurrentPage('dashboard');
-  };
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
+
+  if (isLoading) {
+    return <div className="text-center text-gray-500">Loading models...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center text-red-500">{error}</div>;
+  }
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', background: 'white', padding: '20px', borderRadius: '8px' }}>
-      <h2 style={styles.pageHeader}>LM Onboard Configuration</h2>
-      <div style={{ padding: '20px' }}>
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>Model Name</label>
-          <input
-            type="text" name="model_name" value={formData.model_name} onChange={handleChange}
-            placeholder="e.g., Gemini Pro" style={styles.inputStyle}
-          />
-        </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>Provider</label>
-          <input
-            type="text" name="provider" value={formData.provider} onChange={handleChange}
-            placeholder="e.g., Google, OpenAI" style={styles.inputStyle}
-          />
-        </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>API URL</label>
-          <input
-            type="text" name="api_url" value={formData.api_url} onChange={handleChange}
-            placeholder="Enter API endpoint URL" style={styles.inputStyle}
-          />
-        </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <label style={styles.labelStyle}>API Key</label>
-          <input
-            type="password" name="api_key" value={formData.api_key} onChange={handleChange}
-            placeholder="Enter API key" style={styles.inputStyle}
-          />
-        </div>
-        
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ ...styles.labelStyle, display: 'flex', alignItems: 'center' }}>
-            <input
-              type="checkbox"
-              name="is_public"
-              checked={formData.is_public}
-              onChange={handleChange}
-              style={{ marginRight: '8px' }}
-            />
-            Is Public
-          </label>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={handleDiscard}
-            style={{ ...styles.buttonStylePrimary, background: '#6b7280' }}
-          >
-            Discard
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            style={styles.buttonStylePrimary}
-          >
-            Save & Submit
-          </button>
-        </div>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Manage and configure onboarded AI models</h2>
+        <button
+          onClick={openModal}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        >
+          Onboard LM
+        </button>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {models.length > 0 ? (
+          models.map(model => (
+            <ModelCard key={model.id} model={model} onUpdate={fetchModels} onDelete={fetchModels} />
+          ))
+        ) : (
+          <p className="text-gray-600 col-span-full text-center">No models onboarded yet. Click "Onboard LM" to add one.</p>
+        )}
+      </div>
+
+      <LMOnboardModal isOpen={isModalOpen} onClose={closeModal} onSuccess={handleOnboardSuccess} />
     </div>
   );
 };

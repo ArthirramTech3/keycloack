@@ -1,41 +1,24 @@
 // ModelCard.jsx
 
-const ModelCard = ({ name, version, isPrivate, buttonColor, onConfigure }) => {
+const ModelCard = ({ model, onUpdate, onDelete }) => {
+    // Assuming 'model' object has properties like model_name, provider, is_public
+    const { id, model_name, provider, is_public } = model;
+    const accessStatus = is_public ? 'Public Hosted' : 'Private';
+  
     return (
-      <div style={{
-        background: 'white',
-        border: '2px dotted #9ca3af',
-        borderRadius: '8px',
-        padding: '24px 20px',
-        width: '100%',
-        minHeight: '280px',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '20px', flex: '0 0 auto' }}>
-          <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>
-            • {isPrivate ? 'Private' : 'Public Hosted'}
+      <div className="bg-white border-2 border-dashed border-gray-400 rounded-lg p-6 flex flex-col min-h-[280px]">
+        <div className="text-center mb-5 flex-grow-0">
+          <span className="text-xs text-gray-600 font-medium">
+            • {accessStatus}
           </span>
-          <h3 style={{ margin: '10px 0 6px 0', fontSize: '20px', fontWeight: 'bold', color: '#111827', letterSpacing: '0.5px' }}>
-            {name}
+          <h3 className="mt-2 mb-1 text-xl font-bold text-gray-900 tracking-wide">
+            {model_name}
           </h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#dc2626', fontWeight: '700' }}>{version}</p>
+          <p className="text-sm text-red-600 font-bold">{provider}</p>
         </div>
   
-        <div style={{
-          borderTop: '3px solid #3b82f6',
-          paddingTop: '16px',
-          marginBottom: '20px',
-          flex: '1 1 auto'
-        }}>
-          <ul style={{ 
-            listStyle: 'disc', 
-            paddingLeft: '20px', 
-            margin: 0, 
-            color: '#4b5563', 
-            fontSize: '12px',
-            lineHeight: '1.8'
-          }}>
+        <div className="border-t-2 border-blue-600 pt-4 mb-5 flex-grow">
+          <ul className="list-disc pl-5 text-gray-700 text-sm leading-relaxed">
             <li>Meta Features</li>
             <li>45 Parameter</li>
             <li>34 Temperature</li>
@@ -44,22 +27,18 @@ const ModelCard = ({ name, version, isPrivate, buttonColor, onConfigure }) => {
         </div>
   
         <button
-          onClick={onConfigure}
-          style={{
-          width: '100%',
-          padding: '11px',
-          background: buttonColor,
-          color: 'white',
-          border: 'none',
-          borderRadius: '20px',
-          cursor: 'pointer',
-          fontWeight: '600',
-          fontSize: '12px',
-          letterSpacing: '0.5px',
-          flex: '0 0 auto'
-        }}>
+          onClick={() => onUpdate(model.id)} // Or open an edit modal
+          className="w-full py-2.5 bg-blue-600 text-white rounded-full cursor-pointer font-semibold text-xs tracking-wider hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 flex-grow-0"
+        >
           VIEW/CONFIGURE
         </button>
+        {/* Potentially add a delete button for admin users */}
+        {/* <button
+          onClick={() => onDelete(model.id)}
+          className="mt-2 w-full py-2.5 bg-red-600 text-white rounded-full cursor-pointer font-semibold text-xs tracking-wider hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+        >
+          Delete
+        </button> */}
       </div>
     );
   };
