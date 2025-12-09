@@ -5,11 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, EmailStr # Added Field and EmailStr
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter
 import httpx
 import jwt
+from ai_gateway_models import Organization, User, ProviderConfig, UsageLog, Alert # Import new models, will alias User later
+from datetime import datetime # Import datetime for schemas
    
 # --- Configuration ---
 # Use an absolute path to ensure the DB is in the project root
@@ -27,7 +29,12 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# SQLAlchemy Model for the 'models' table
+# Assign the Base from main.py to the models in ai_gateway_models.py
+# This ensures all models use the same metadata for create_all
+from ai_gateway_models import Base as AIGatewayBase
+AIGatewayBase.metadata = Base.metadata
+
+# SQLAlchemy Model for the 'models' table (existing model)
 class DBModel(Base):
     __tablename__ = "models"
     id = Column(Integer, primary_key=True, index=True)
@@ -36,10 +43,10 @@ class DBModel(Base):
     creator_id = Column(String, index=True, nullable=True) # Keycloak user 'sub'
     is_public = Column(Boolean, default=False)
 
-# Create the database table
+# Create all database tables (both existing and AI Gateway models)
 Base.metadata.create_all(bind=engine)
 
-# Pydantic model for response
+# Pydantic model for response (existing model)
 class ModelResponse(BaseModel):
     id: int
     model_name: str
@@ -50,7 +57,7 @@ class ModelResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Pydantic model for creating a new model
+# Pydantic model for creating a new model (existing model)
 class ModelCreate(BaseModel):
     model_name: str
     provider: str
@@ -58,13 +65,97 @@ class ModelCreate(BaseModel):
     api_key: str
     is_public: bool
 
+# --- AI Gateway Pydantic Schemas ---
+class OrgCreate(BaseModel):
+    name: str
+
+class AIGatewayUserCreate(BaseModel): # Renamed to avoid conflict with existing UserCreate
+    keycloak_user_id: str
+    email: EmailStr
+    full_name: Optional[str]
+    role: Optional[str] = "member"
+    monthly_quota: Optional[int] = 100000
+    rate_limit_per_minute: Optional[int] = 60
+
+class ProviderConfigCreate(BaseModel):
+    provider_name: str
+    api_key: str
+    allowed_models: List[str] = []
+
+class APIKeyRotate(BaseModel):
+    user_id: int
+
+class ChatRequest(BaseModel):
+    provider: str = Field(..., example="openai")
+    model: str = Field(..., example="gpt-4o-mini")
+    messages: List[dict]  # naive typing to mirror OpenAI style
+
+# Pydantic models for responses for AI Gateway specific models
+class OrganizationResponse(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AIGatewayUserResponse(BaseModel): # Renamed to avoid conflict
+    id: int
+    organization_id: int
+    keycloak_user_id: str
+    email: EmailStr
+    full_name: Optional[str]
+    role: str
+    monthly_quota: int
+    rate_limit_per_minute: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ProviderConfigResponse(BaseModel):
+    id: int
+    organization_id: int
+    provider_name: str
+    allowed_models: List[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UsageLogResponse(BaseModel):
+    id: int
+    user_id: int
+    organization_id: int
+    provider: str
+    model: str
+    tokens_in: int
+    tokens_out: int
+    total_tokens: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+class AlertResponse(BaseModel):
+    id: int
+    user_id: Optional[int]
+    organization_id: Optional[int]
+    alert_type: str
+    message: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # Pydantic model for login request
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-# --- Pydantic Models for User Management ---
-class UserCreate(BaseModel):
+# --- Pydantic Models for Keycloak User Management (Existing) ---
+class KeycloakUserCreate(BaseModel): # Renamed to avoid conflict
     username: str
     password: str
     email: str
@@ -301,7 +392,7 @@ async def get_users():
             raise HTTPException(status_code=500, detail=f"Failed to fetch users from Keycloak: {str(e)}")
 
 @admin_router.post("/users/create", dependencies=[Depends(verify_admin_role)])
-async def create_user(user_data: UserCreate):
+async def create_keycloak_user(user_data: KeycloakUserCreate): # Renamed function and parameter
     """Create a new user in Keycloak."""
     payload = {
         "username": user_data.username,
@@ -468,8 +559,14 @@ async def delete_role(role_name: str):
         else:
             raise HTTPException(status_code=response.status_code, detail="Failed to delete role.")
 
-# --- Include the admin router in the main app ---
+# --- Include the existing admin router in the main app ---
 app.include_router(admin_router)
+
+# --- Include the new AI Gateway routers in the main app ---
+from ai_gateway_routers import ai_gateway_admin_router, ai_gateway_proxy_router
+app.include_router(ai_gateway_admin_router)
+app.include_router(ai_gateway_proxy_router)
+
 
 @app.get("/")
 def read_root():
