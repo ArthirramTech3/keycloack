@@ -3,9 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from sqlalchemy.ext.declarative import declarative_base # Import declarative_base here for consistency
 
-# Base will be initialized in main.py, so we use a placeholder here for models.
-# It will be set dynamically when imported into main.py
-Base = declarative_base()
+from backend.app.models import Base
 
 class Organization(Base):
     __tablename__ = "organizations"

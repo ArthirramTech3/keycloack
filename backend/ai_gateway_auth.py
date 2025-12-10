@@ -9,7 +9,7 @@ import secrets
 from passlib.context import CryptContext
 
 from main import get_db, KEYCLOAK_PUBLIC_KEY, REALM, KEYCLOAK_URL, CLIENT_ID, CLIENT_SECRET
-from ai_gateway_models import User as AIGatewayUser, Organization # Import User and alias it
+from backend.app.models import User as AIGatewayUser, Organization # Import User and alias it
 from main import get_admin_token # Assuming get_admin_token is in main.py
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
