@@ -22,7 +22,8 @@ const GroupsTab = () => {
         setLoading(true);
         try {
             // FIX: Ensure API call is correct, assuming it returns group details
-            const response = await api.get(`/${GROUP_BASE_PATH}`);
+
+            const response = await api.get('/admin/groups');
             setGroups(response.data);
         } catch (error) {
             console.error("Failed to fetch groups:", error);
@@ -55,8 +56,9 @@ const GroupsTab = () => {
         // ------------------------------------------------------------------
     
         try {
+
             // Use the corrected payload
-            await api.post(`/${GROUP_BASE_PATH}/create`, payload); 
+            await api.post('/admin/groups', payload);
             
             setShowCreateModal(false);
             await fetchGroups();
@@ -81,9 +83,10 @@ const GroupsTab = () => {
     const handleUpdateGroup = async (groupId, updatedData) => {
         setLoading(true);
         try {
+
             // FIX: Ensure PUT request sends only the updated fields,
             // and the endpoint is correct (e.g., /groups/{groupId})
-            await api.put(`/${GROUP_BASE_PATH}/${groupId}`, updatedData);
+            await api.put(`/admin/groups/${groupId}`, updatedData);
             
             setShowEditModal(false);
             setSelectedGroup(null); // Clear selected group on successful edit
@@ -101,7 +104,8 @@ const GroupsTab = () => {
         if (window.confirm(`Are you sure you want to delete group ${groupName}?`)) {
             setLoading(true);
             try {
-                await api.delete(`/${GROUP_BASE_PATH}/${groupId}`);
+
+                await api.delete(`/admin/groups/${groupId}`);
                 await fetchGroups();
             } catch (error) {
                 alert(`Deletion Failed: ${error.response?.data?.detail || 'Unknown error'}`);

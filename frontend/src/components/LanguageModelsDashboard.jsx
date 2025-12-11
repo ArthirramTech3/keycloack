@@ -26,7 +26,7 @@ const LanguageModelsDashboard = ({ setCurrentPage, setSelectedModelForThreshold 
         setLoading(true);
         try {
           // Fetch user-specific models, or public models as a fallback
-          const response = await memoizedApi.get(`/models`);
+          const response = await memoizedApi.get(`/admin/models`);
           const loadedModels = response.data.map(model => ({
             name: model.model_name.toUpperCase(),
             version: model.provider,

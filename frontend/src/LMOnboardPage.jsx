@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useKeycloak } from '@react-keycloak/web';
 import useApi from './useApi'; // <-- 1. IMPORT THE useApi HOOK
 
@@ -27,8 +27,21 @@ const LMOnboardPage = ({ setCurrentPage }) => {
   const { keycloak } = useKeycloak();
   const api = useApi(); // <-- 2. INITIALIZE THE API HOOK
   const [formData, setFormData] = useState({
-    model_name: 'Gemini Pro', provider: '', api_key: '', api_url: '', is_public: true
+    model_name: '', provider: '', api_key: '', api_url: '', is_public: true, organization_id: null
   });
+  const [organizations, setOrganizations] = useState([]);
+
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await api.get('/organizations');
+        setOrganizations(response.data);
+      } catch (error) {
+        console.error('Error fetching organizations:', error);
+      }
+    };
+    fetchOrganizations();
+  }, [api]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -37,8 +50,12 @@ const LMOnboardPage = ({ setCurrentPage }) => {
 
   const handleSubmit = async () => {
     try {
+      const payload = { ...formData };
+      if (payload.organization_id === '') {
+        payload.organization_id = null;
+      }
       // 3. USE THE API HOOK TO CREATE THE MODEL
-      const response = await api.post('/models/create', formData);
+      const response = await api.post('/admin/models/create', payload);
       
       if (response.status !== 200 && response.status !== 201) {
         throw new Error(response.data.detail || 'Failed to save the model.');
@@ -103,6 +120,23 @@ const LMOnboardPage = ({ setCurrentPage }) => {
             Is Public
           </label>
         </div>
+
+        {!formData.is_public && (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={styles.labelStyle}>Organization</label>
+            <select
+              name="organization_id"
+              value={formData.organization_id}
+              onChange={handleChange}
+              style={styles.inputStyle}
+            >
+              <option value="">Select an organization</option>
+              {organizations.map(org => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <button
