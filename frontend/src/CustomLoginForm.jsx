@@ -27,7 +27,7 @@ export default function CustomLoginForm({ onLoginSuccess }) {
 
         try {
             // 1. Call the FastAPI endpoint which handles the Keycloak ROPC flow
-            const response = await fetch("http://localhost:8000/custom-login", {
+            const response = await fetch("http://localhost:8000/auth/login", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

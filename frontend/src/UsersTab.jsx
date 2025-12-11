@@ -45,7 +45,8 @@ const UsersTab = () => {
         setLoading(true);
         try {
             // Data structure must match the FastAPI UserCreate model
-            await api.post('/users/create', { 
+
+            await api.post('/admin/users', {
                 username: newUserData.username,
                 password: newUserData.password, 
                 email: newUserData.email,

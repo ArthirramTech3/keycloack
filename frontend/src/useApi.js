@@ -2,7 +2,8 @@
 import axios from 'axios';
 import { useKeycloak } from "@react-keycloak/web";
 
-const API_BASE_URL = 'http://localhost:8000/admin'; // Base for all admin endpoints
+
+const API_BASE_URL = 'http://localhost:8000'; // Base for all backend endpoints
 
 const useApi = () => {
     const { keycloak } = useKeycloak();
