@@ -1,0 +1,4 @@
+# Keycloak data and logs
+data/
+lib/
+keycloak-26.0.5/
